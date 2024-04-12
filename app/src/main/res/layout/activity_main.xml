@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <ImageButton
+        android:id="@+id/iconoContactos"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_centerInParent="true"
+        app:srcCompat="@drawable/contacts"
+        android:scaleType="fitXY"
+        android:layout_above="@+id/iconoCamara" />
+
+    <ImageButton
+        android:id="@+id/iconoCamara"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_centerInParent="true"
+        app:srcCompat="@drawable/camera"
+        android:scaleType="fitXY"
+        android:layout_marginTop="30dp"
+        android:layout_marginBottom="30dp"/>
+
+    <ImageButton
+        android:id="@+id/iconoMapa"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_centerInParent="true"
+        app:srcCompat="@drawable/osmap"
+        android:scaleType="fitXY"
+        android:layout_below="@id/iconoCamara"/>
+
+</RelativeLayout>
