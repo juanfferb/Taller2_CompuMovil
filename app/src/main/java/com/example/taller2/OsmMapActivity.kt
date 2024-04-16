@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.preference.PreferenceManager
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -17,6 +18,7 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import org.json.JSONArray
 import org.osmdroid.api.IMapController
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -24,6 +26,11 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.TilesOverlay
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileWriter
+import java.io.Writer
+import java.util.Date
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.pow
@@ -37,6 +44,8 @@ class OsmMapActivity : AppCompatActivity() {
     private lateinit var map : MapView
     private var fusedLocationClient: FusedLocationProviderClient? = null
     private var ultimaUbicacion: Location? = null
+    //Para guardar la las ubicaciones en el archivo JSON
+    private var localizaciones: JSONArray = JSONArray()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_osm_map)
@@ -111,16 +120,16 @@ class OsmMapActivity : AppCompatActivity() {
                 // Obtener la ubicación actual del resultado
                 val miUbi: Location? = locationResult.lastLocation
                 if (miUbi != null) {
-                    if(ultimaUbicacion == null){
-                        ultimaUbicacion = miUbi;
-                        updateMarker()
-                    }
                     // Hacer algo con la ubicación obtenida
-                    //TODO REVISAR SI SUPERO LA DISTANCIA DEL MARCADOR ACTUAL
                     val latitude: Double = miUbi.getLatitude()
                     val longitude: Double = miUbi.getLongitude()
+                    if(ultimaUbicacion == null){
+                        ultimaUbicacion = miUbi;
+                        updateMarker(latitude, longitude)
+                    }
                     if(checkDistance(latitude, longitude)){
-                        updateMarker()
+                        updateMarker(latitude, longitude)
+                        writeJSONObject(latitude, longitude)
                     }
                     //Toast.makeText(this@OsmMapActivity, "Longitud: $longitude - Latitud = $latitude", Toast.LENGTH_SHORT).show()
                 }
@@ -132,7 +141,7 @@ class OsmMapActivity : AppCompatActivity() {
 
     }
 
-    private fun updateMarker() {
+    private fun updateMarker(lat: Double, lon: Double) {
         // Obtener todos los overlays del mapa
         val mapOverlays = map.overlays
 
@@ -146,7 +155,7 @@ class OsmMapActivity : AppCompatActivity() {
         map.invalidate();
 
         // Configurar la ubicación del marcador
-        val npoint = GeoPoint(ultimaUbicacion!!.latitude,  ultimaUbicacion!!.longitude) // Latitud y longitud de Nueva York
+        val npoint = GeoPoint(lat,  lon)
 
         //Centrar vista
         val mapController: IMapController = map.controller
@@ -202,6 +211,25 @@ class OsmMapActivity : AppCompatActivity() {
                 //El permiso no ha sido aceptado
                 Toast.makeText(this, "Permisos denegados :(", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    //ESCRITURA EN MEMORIA
+    private fun writeJSONObject(lat: Double, lon: Double) {
+        localizaciones.put(MyLocation(
+            Date(System.currentTimeMillis()), lat,
+            lon).toJSON())
+        var output: Writer?
+        val filename = "locations.json"
+        try {
+            val file = File(baseContext.getExternalFilesDir(null), filename)
+            Log.i("LOCATION", "Ubicacion de archivo: $file")
+            output = BufferedWriter(FileWriter(file))
+            output.write(localizaciones.toString())
+            output.close()
+            Toast.makeText(applicationContext, "Location saved", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Log.i("ERROR_JSON_FILE", "No se pudo escribir en el archivo")
         }
     }
 }
