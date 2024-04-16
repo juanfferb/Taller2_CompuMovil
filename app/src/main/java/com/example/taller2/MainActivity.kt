@@ -21,7 +21,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         botonMapa.setOnClickListener {
-            val intent2 = Intent(this, MapsActivity::class.java)
+            val intent2 = Intent(this, OsmMapActivity::class.java)
             startActivity(intent2)
         }
 
