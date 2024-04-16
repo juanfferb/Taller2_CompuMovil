@@ -5,10 +5,13 @@ import android.annotation.SuppressLint
 import android.app.UiModeManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.util.Log
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -37,6 +40,7 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
+import java.io.IOException
 
 
 class OsmMapActivity : AppCompatActivity() {
@@ -46,6 +50,8 @@ class OsmMapActivity : AppCompatActivity() {
     private var ultimaUbicacion: Location? = null
     //Para guardar la las ubicaciones en el archivo JSON
     private var localizaciones: JSONArray = JSONArray()
+    //Par busqueda de puntos
+    private var mGeocoder: Geocoder? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_osm_map)
@@ -62,12 +68,43 @@ class OsmMapActivity : AppCompatActivity() {
 
         // Revisar permisos
         checkLocationPermission()
+
+        // Para buscar dentro del mapa
+
+        val editText : EditText = findViewById(R.id.editText)
+        editText.setOnEditorActionListener { v, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_SEND) {
+            }
+
+            val addressString = editText.toString()
+            if (addressString.isNotEmpty()) {
+                try {
+                    val addresses = mGeocoder!!.getFromLocationName(addressString, 2)
+                    if (addresses != null && addresses.isNotEmpty()) {
+                        if (map != null && mGeocoder != null) {
+                            val addressResult = addresses[0]
+                            //Agregar Marcador al mapa
+                            updateMarker(addressResult.latitude, addressResult.longitude)
+                        } else {
+                            Toast.makeText(this, "Dirección no encontrada", Toast.LENGTH_SHORT)
+                                .show()
+                        }
+                    }
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+            } else {
+                Toast.makeText(this, "La dirección esta vacía", Toast.LENGTH_SHORT).show()
+            }
+            true
+        }
     }
 
     override fun onResume() {
         super.onResume()
         map.onResume()
 
+        mGeocoder = Geocoder(baseContext)
         //Cambiar de OSCURO -> CLARO o CLARO -> OSCURO
         val uiManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
         if(uiManager.nightMode == UiModeManager.MODE_NIGHT_YES)
