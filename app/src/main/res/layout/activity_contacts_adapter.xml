@@ -11,7 +11,8 @@
         android:layout_width="0dp"
         android:layout_height="40dp"
         android:layout_weight="0.2"
-        app:srcCompat="@android:drawable/ic_menu_call" />
+        app:srcCompat="@drawable/ic_contactsmail"
+        app:tint="@color/material_dynamic_primary70"/>
 
     <TextView
         android:id="@+id/idContacto"
