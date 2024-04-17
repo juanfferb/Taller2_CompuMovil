@@ -24,9 +24,11 @@ import com.google.android.gms.location.LocationServices
 import org.json.JSONArray
 import org.osmdroid.api.IMapController
 import org.osmdroid.config.Configuration
+import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.TilesOverlay
 import java.io.BufferedWriter
@@ -50,8 +52,10 @@ class OsmMapActivity : AppCompatActivity() {
     private var ultimaUbicacion: Location? = null
     //Para guardar la las ubicaciones en el archivo JSON
     private var localizaciones: JSONArray = JSONArray()
-    //Par busqueda de puntos
+    //Para busqueda de puntos
     private var mGeocoder: Geocoder? = null
+    //Para el marcador LONG-PRESS
+    private var longPressedMarker: Marker? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_osm_map)
@@ -76,28 +80,107 @@ class OsmMapActivity : AppCompatActivity() {
             if (actionId == EditorInfo.IME_ACTION_SEND) {
             }
 
-            val addressString = editText.toString()
-            if (addressString.isNotEmpty()) {
-                try {
-                    val addresses = mGeocoder!!.getFromLocationName(addressString, 2)
-                    if (addresses != null && addresses.isNotEmpty()) {
-                        if (map != null && mGeocoder != null) {
-                            val addressResult = addresses[0]
-                            //Agregar Marcador al mapa
-                            updateMarker(addressResult.latitude, addressResult.longitude)
-                        } else {
-                            Toast.makeText(this, "Dirección no encontrada", Toast.LENGTH_SHORT)
-                                .show()
+                val addressString = editText.text.toString()
+                if (addressString.isNotEmpty()) {
+                    try {
+                        val addresses = mGeocoder!!.getFromLocationName(addressString, 2)
+                        if (addresses != null && addresses.isNotEmpty()) {
+                            if (map != null && mGeocoder != null) {
+                                val addressResult = addresses[0]
+                                //Agregar Marcador al mapa
+                                updateMarker(addressResult.latitude, addressResult.longitude)
+                                createToastWithDistance(addressResult.latitude, addressResult.longitude)
+                            } else {
+                                Toast.makeText(this, "Dirección no encontrada", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
                         }
+                    } catch (e: IOException) {
+                        e.printStackTrace()
                     }
-                } catch (e: IOException) {
-                    e.printStackTrace()
+                } else {
+                    Toast.makeText(this, "La dirección esta vacía", Toast.LENGTH_SHORT).show()
                 }
-            } else {
-                Toast.makeText(this, "La dirección esta vacía", Toast.LENGTH_SHORT).show()
+                true
             }
-            true
+
+
+        //Para el LONG-PRESS
+        map.overlays.add(createOverlayEvents())
+    }
+
+    private fun createToastWithDistance(lat: Double, lon: Double){
+        val distanceToMyLocation = String.format("%.2f", distance(ultimaUbicacion!!.latitude, ultimaUbicacion!!.longitude, lat, lon))
+        Toast.makeText(this, "Distancia hasta tu ubicación: $distanceToMyLocation metros", Toast.LENGTH_SHORT).show()
+    }
+    private fun createOverlayEvents(): MapEventsOverlay? {
+        val overlayEventos = MapEventsOverlay(object : MapEventsReceiver {
+            override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                return false
+            }
+            override fun longPressHelper(p: GeoPoint): Boolean {
+                longPressOnMap(p)
+                return true
+            }
+        })
+        return overlayEventos
+    }
+
+    private fun longPressOnMap(p: GeoPoint) {
+        longPressedMarker?.let { map.overlays.remove(it) }
+
+        //Sacar título con latitud y longitud
+        val addresses = mGeocoder!!.getFromLocation(p.latitude, p.longitude, 2)
+        var title: String? = null
+        if (!addresses.isNullOrEmpty()) {
+            val address = addresses[0].getAddressLine(0)
+            title = address.toString()
         }
+
+        longPressedMarker = createMarker(p, title, null, R.drawable.location_pin)
+
+        //Centrar vista
+        val mapController: IMapController = map.controller
+        mapController.setZoom(18.0)
+        mapController.setCenter(p)
+
+        longPressedMarker?.let { map.overlays.add(it) }
+
+        createToastWithDistance(p.latitude, p.longitude)
+    }
+
+    // Esta se usa solo para crear el marcador de Long-Press
+    private fun createMarker(p: GeoPoint, title: String?, desc: String?, iconID: Int): Marker? {
+        // Obtener todos los overlays del mapa
+        val mapOverlays = map.overlays
+
+        // Recorrer la lista de overlays y eliminar aquellos que sean marcadores
+        val markersToRemove = mutableListOf<Marker>()
+        for (overlay in mapOverlays) {
+            if (overlay is Marker) {
+                markersToRemove.add(overlay)
+            }
+        }
+        mapOverlays.removeAll(markersToRemove)
+        // Actualizar el mapa
+        map.invalidate();
+
+
+        var marker: Marker? = null
+        if (map != null) {
+            marker = Marker(map)
+            title?.let { marker.title = it }
+            desc?.let { marker.subDescription = it }
+            if (iconID != 0) {
+                val myIcon = resources.getDrawable(iconID, this.theme)
+                marker.icon = myIcon
+            }
+
+            marker.position = p
+            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        }
+
+        return marker
     }
 
     override fun onResume() {
@@ -105,6 +188,10 @@ class OsmMapActivity : AppCompatActivity() {
         map.onResume()
 
         mGeocoder = Geocoder(baseContext)
+
+        val mapController: IMapController = map.controller
+        mapController.setZoom(18.0)
+
         //Cambiar de OSCURO -> CLARO o CLARO -> OSCURO
         val uiManager = getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
         if(uiManager.nightMode == UiModeManager.MODE_NIGHT_YES)
@@ -148,7 +235,7 @@ class OsmMapActivity : AppCompatActivity() {
         // Crear una solicitud de ubicación
         val locationRequest: LocationRequest = LocationRequest.create()
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-        locationRequest.setInterval(5000) // Intervalo de actualización de ubicación en milisegundos
+        locationRequest.setInterval(2000) // Intervalo de actualización de ubicación en milisegundos
 
         // Configurar un callback para recibir actualizaciones de ubicación
         val locationCallback: LocationCallback = object : LocationCallback() {
@@ -201,6 +288,9 @@ class OsmMapActivity : AppCompatActivity() {
 
         // Agregar un marcador en el mapa
         val startMarker = Marker(map)
+        val myIcon = resources.getDrawable(R.drawable.location_pin,
+            theme)
+        startMarker.icon = myIcon
         startMarker.setPosition(npoint)
         startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
         map.overlays.add(startMarker)
