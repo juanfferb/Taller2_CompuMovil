@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"  />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -24,6 +29,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Taller2"
         tools:targetApi="31">
+        <activity
+            android:name=".OsmMapActivity"
+            android:exported="false" />
         <activity
             android:name=".ContactsAdaptador"
             android:exported="false" />
@@ -61,6 +69,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service
+            android:name="OsmMapActivity"
+            android:foregroundServiceType="location" >
+            <!-- Any inner elements go here. -->
+        </service>
     </application>
 
 </manifest>
