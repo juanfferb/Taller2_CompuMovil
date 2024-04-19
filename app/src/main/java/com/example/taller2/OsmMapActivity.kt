@@ -184,12 +184,21 @@ class OsmMapActivity : AppCompatActivity() {
 
         //Centrar vista
         val mapController: IMapController = map.controller
-        mapController.setZoom(18.0)
+        mapController.setZoom(17.0)
         mapController.setCenter(p)
 
         longPressedMarker?.let { map.overlays.add(it) }
 
         createToastWithDistance(p.latitude, p.longitude)
+        drawRoute(GeoPoint(ultimaUbicacion!!.latitude, ultimaUbicacion!!.longitude), GeoPoint(p.latitude, p.longitude))
+        //Agregar marcador en nuestra ubicación
+        val startMarker = Marker(map)
+        val myIcon = resources.getDrawable(R.drawable.location_pin,
+            theme)
+        startMarker.icon = myIcon
+        startMarker.setPosition( GeoPoint(ultimaUbicacion!!.latitude, ultimaUbicacion!!.longitude))
+        startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        map.overlays.add(startMarker)
     }
 
     // Esta se usa solo para crear el marcador de Long-Press
