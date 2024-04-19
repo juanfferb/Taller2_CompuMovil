@@ -13,6 +13,7 @@
         android:layout_centerInParent="true"
         app:srcCompat="@drawable/contacts"
         android:scaleType="fitXY"
+        android:background="@color/white"
         android:layout_above="@+id/iconoCamara" />
 
     <ImageButton
@@ -23,6 +24,7 @@
         app:srcCompat="@drawable/camera"
         android:scaleType="fitXY"
         android:layout_marginTop="30dp"
+        android:background="@color/white"
         android:layout_marginBottom="30dp"/>
 
     <ImageButton
@@ -32,6 +34,7 @@
         android:layout_centerInParent="true"
         app:srcCompat="@drawable/osmap"
         android:scaleType="fitXY"
+        android:background="@color/white"
         android:layout_below="@id/iconoCamara"/>
 
 </RelativeLayout>
