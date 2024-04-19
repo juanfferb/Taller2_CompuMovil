@@ -5,9 +5,11 @@ import android.annotation.SuppressLint
 import android.app.UiModeManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
+import android.os.StrictMode
 import android.preference.PreferenceManager
 import android.util.Log
 import android.view.inputmethod.EditorInfo
@@ -23,6 +25,8 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import org.json.JSONArray
 import org.osmdroid.api.IMapController
+import org.osmdroid.bonuspack.routing.OSRMRoadManager
+import org.osmdroid.bonuspack.routing.RoadManager
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -30,6 +34,7 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.TilesOverlay
 import java.io.BufferedWriter
 import java.io.File
@@ -56,6 +61,10 @@ class OsmMapActivity : AppCompatActivity() {
     private var mGeocoder: Geocoder? = null
     //Para el marcador LONG-PRESS
     private var longPressedMarker: Marker? = null
+    //Para rutas
+    lateinit var roadManager: RoadManager
+    private var roadOverlay: Polyline? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_osm_map)
@@ -90,6 +99,18 @@ class OsmMapActivity : AppCompatActivity() {
                                 //Agregar Marcador al mapa
                                 updateMarker(addressResult.latitude, addressResult.longitude)
                                 createToastWithDistance(addressResult.latitude, addressResult.longitude)
+                                drawRoute(GeoPoint(ultimaUbicacion!!.latitude, ultimaUbicacion!!.longitude), GeoPoint(addressResult.latitude, addressResult.longitude))
+                                //Agregar marcador en nuestra ubicación
+                                val startMarker = Marker(map)
+                                val myIcon = resources.getDrawable(R.drawable.location_pin,
+                                    theme)
+                                startMarker.icon = myIcon
+                                startMarker.setPosition( GeoPoint(ultimaUbicacion!!.latitude, ultimaUbicacion!!.longitude))
+                                startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                map.overlays.add(startMarker)
+                                //Cambiar Zoom
+                                val mapController: IMapController = map.controller
+                                mapController.setZoom(15.0)
                             } else {
                                 Toast.makeText(this, "Dirección no encontrada", Toast.LENGTH_SHORT)
                                     .show()
@@ -107,6 +128,28 @@ class OsmMapActivity : AppCompatActivity() {
 
         //Para el LONG-PRESS
         map.overlays.add(createOverlayEvents())
+
+        //Para ruta
+        val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
+        StrictMode.setThreadPolicy(policy)
+        roadManager = OSRMRoadManager(this, "ANDROID")
+    }
+
+    //Para ruta
+    private fun drawRoute(start: GeoPoint, finish: GeoPoint) {
+        val routePoints = ArrayList<GeoPoint>()
+        routePoints.add(start)
+        routePoints.add(finish)
+        val road = roadManager.getRoad(routePoints)
+        Log.i("OSM_acticity", "Route length: ${road.mLength} klm")
+        Log.i("OSM_acticity", "Duration: ${road.mDuration / 60} min")
+        if (map != null) {
+            roadOverlay?.let { map.overlays.remove(it) }
+            roadOverlay = RoadManager.buildRoadOverlay(road)
+            roadOverlay?.outlinePaint?.color = Color.BLUE
+            roadOverlay?.outlinePaint?.strokeWidth = 10f
+            map.overlays.add(roadOverlay)
+        }
     }
 
     private fun createToastWithDistance(lat: Double, lon: Double){
